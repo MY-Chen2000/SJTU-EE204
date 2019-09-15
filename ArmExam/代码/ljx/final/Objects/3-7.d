@@ -1,0 +1,16 @@
+.\objects\3-7.o: 3-7.c
+.\objects\3-7.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\3-7.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
+.\objects\3-7.o: .\inc\hw_memmap.h
+.\objects\3-7.o: .\driverlib\debug.h
+.\objects\3-7.o: .\driverlib\gpio.h
+.\objects\3-7.o: .\inc\hw_i2c.h
+.\objects\3-7.o: .\inc\hw_types.h
+.\objects\3-7.o: .\driverlib\i2c.h
+.\objects\3-7.o: .\driverlib\pin_map.h
+.\objects\3-7.o: .\driverlib\sysctl.h
+.\objects\3-7.o: .\driverlib\systick.h
+.\objects\3-7.o: .\driverlib\interrupt.h
+.\objects\3-7.o: .\driverlib\uart.h
+.\objects\3-7.o: .\inc\hw_ints.h
+.\objects\3-7.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h

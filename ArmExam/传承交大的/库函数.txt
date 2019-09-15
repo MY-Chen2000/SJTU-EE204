@@ -1,0 +1,166 @@
+#define   TIME	  (uint32_t) 500000      
+Delay(TIME);  //延时程序   （可用于防抖动）
+void Delay(uint32_t value)
+{
+	uint32_t ui32Loop;
+	for(ui32Loop = 0; ui32Loop < value; ui32Loop++){};
+}
+
+
+
+
+器件位置：
+USR_SW1：PJ0      USR_SW2：PJ1
+D1 ：PN1          D2 ：PN0      D3 :PF4       D4 :PF0
+LED_M0123 :PF0123
+I2C 扩展8 位:  LED1-LED8 :PCA9557-P0-P7
+I2C 扩展24   :SW1-SW8 TCA6424-P01~P08    +八段管
+
+
+ 一、GPIO
+
+ //按键按下为0
+ //输出不重新设置不会改变
+ //0x 16进制数
+
+         SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);						//Enable PortF  使能一个端口
+	//void SysCtlPeripheralEnable(uint32_t ui32Peripheral)
+
+
+
+        while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF));			//Wait for the GPIO moduleF ready 等待其使能成功
+	//bool SysCtlPeripheralReady(uint32_t ui32Peripheral)
+
+
+
+        GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_0);			//Set PF0 as Output pin  某端口某引脚设为输出
+	//void GPIOPinTypeGPIOOutput(uint32_t ui32Port, uint8_t ui8Pins)
+
+
+        GPIOPinTypeGPIOInput(GPIO_PORTJ_BASE,GPIO_PIN_0 | GPIO_PIN_1);    //Set the PJ0,PJ1 as input pin   端口某引脚设为输入  GPIO_PIN_0 | GPIO_PIN_1 = 00000011b
+
+        GPIOPadConfigSet(GPIO_PORTJ_BASE,GPIO_PIN_0 | GPIO_PIN_1,GPIO_STRENGTH_2MA,GPIO_PIN_TYPE_STD_WPU); //设置管脚配置 （2mA驱动，配置输入端口）
+        //void GPIOPadConfigSet(uint32_t ui32Port, uint8_t ui8Pins, uint32_t ui32Strength, uint32_t ui32PinType)
+
+
+       GPIOPinRead(GPIO_PORTJ_BASE,GPIO_PIN_0);    //读某引脚数据   //按键按下为0
+
+
+       GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0x0);		// Turn off the LED.//往某引脚写数据//写一8位2进制数，对应引脚get对应位数
+
+
+二、时钟
+     
+若使用外部晶振，则频率可设置为
+SYSCTL_XTAL_5MHZ, SYSCTL_XTAL_6MHZ, SYSCTL_XTAL_8MHZ, SYSCTL_XTAL_10MHZ, SYSCTL_XTAL_12MHZ, SYSCTL_XTAL_16MHZ, 
+SYSCTL_XTAL_18MHZ, SYSCTL_XTAL_20MHZ, SYSCTL_XTAL_24MHZ, or SYSCTL_XTAL_25MHz
+
+
+
+//use internal 16M oscillator, HSI //16内部晶振
+     uint32_t ui32SysClock;
+    ui32SysClock = SysCtlClockFreqSet((SYSCTL_XTAL_16MHZ |SYSCTL_OSC_INT |SYSCTL_USE_OSC), 16000000);
+	//use internal 16M oscillator, PIOSC
+   //ui32SysClock = SysCtlClockFreqSet((SYSCTL_XTAL_16MHZ |SYSCTL_OSC_INT |SYSCTL_USE_OSC), 16000000);		
+	//ui32SysClock = SysCtlClockFreqSet((SYSCTL_XTAL_16MHZ |SYSCTL_OSC_INT |SYSCTL_USE_OSC), 8000000);		
+	//use external 25M oscillator, MOSC
+   //ui32SysClock = SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ |SYSCTL_OSC_MAIN |SYSCTL_USE_OSC), 25000000);		
+
+	//use external 25M oscillator and PLL to 120M
+   //ui32SysClock = SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ |SYSCTL_OSC_MAIN | SYSCTL_USE_PLL |SYSCTL_CFG_VCO_480), 120000000);	
+	ui32SysClock = SysCtlClockFreqSet((SYSCTL_XTAL_16MHZ |SYSCTL_OSC_INT | SYSCTL_USE_PLL |SYSCTL_CFG_VCO_480), 20000000);
+
+
+     uint32_t  TheSysClock;
+     TheSysClock = SysCtlClockGet();	//  获取当前的系统时钟频率
+
+
+
+
+
+三、systick计数器
+     SysTickPeriodSet(ui32SysClock/SYSTICK_FREQUENCY); //设置systick计数周期//主函数中
+     SysTickEnable();  //使能systick
+
+
+
+
+
+
+
+
+
+
+四、I2C
+//2口使能 1口7段管
+//I2C 扩展8 位:  LED1-LED8 :PCA9557-P0-P7
+//I2C 扩展24   :SW1-SW8 TCA6424-P01~P08    +八段管
+
+   SysCtlPeripheralEnable(SYSCTL_PERIPH_I2C0);//使能I2C0模块
+   SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);//使能B口
+  GPIOPinConfigure(GPIO_PB2_I2C0SCL);//配置PB2为I2C0SCL
+  GPIOPinConfigure(GPIO_PB3_I2C0SDA);//配置PB3为I2C0SDA
+  GPIOPinTypeI2CSCL(GPIO_PORTB_BASE, GPIO_PIN_2);//I2C将GPIO_PIN_2用作SCL（串行数据线）
+  GPIOPinTypeI2C(GPIO_PORTB_BASE, GPIO_PIN_3);//I2C将GPIO_PIN_3用作SDA（串行时钟线）
+  I2CMasterInitExpClk(I2C0_BASE,ui32SysClock, true);//主机模块初始化
+  I2CMasterEnable(I2C0_BASE);	//使能主机模块
+
+	result = I2C0_WriteByte(TCA6424_I2CADDR,TCA6424_CONFIG_PORT0,0x0ff);		//config port 0 as input   //0口写1作为输入
+	result = I2C0_WriteByte(TCA6424_I2CADDR,TCA6424_CONFIG_PORT1,0x0);			//config port 1 as output  //1、2口写0作为输出 2口使能 1口7段管
+	result = I2C0_WriteByte(TCA6424_I2CADDR,TCA6424_CONFIG_PORT2,0x0);			//config port 2 as output   // 1、2输出都是高有效
+
+
+
+五、UART
+/////////////////////////////////////////////
+void S800_UART_Init(void)
+{
+	SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
+  SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);						//Enable PortA
+	while(!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOA));			//Wait for the GPIO moduleA ready
+
+	GPIOPinConfigure(GPIO_PA0_U0RX);												// Set GPIO A0 and A1 as UART pins.
+  GPIOPinConfigure(GPIO_PA1_U0TX);    			
+
+  GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+
+	// Configure the UART for 115,200, 8-N-1 operation.
+  UARTConfigSetExpClk(UART0_BASE, ui32SysClock,115200,(UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |UART_CONFIG_PAR_NONE));
+	UARTStringPut((uint8_t *)"\r\nHello, world!\r\n");
+}
+///////////////////////////////////////////////////////////
+void UARTStringPut(uint8_t *cMessage)
+{
+	while(*cMessage!='\0')
+		UARTCharPut(UART0_BASE,*(cMessage++));
+}
+void UARTStringPutNonBlocking(const char *cMessage)
+{
+	while(*cMessage!='\0')
+		UARTCharPutNonBlocking(UART0_BASE,*(cMessage++));
+}
+/////////////////////////////////////////////////////
+
+	uart_receive_char = (uint8_t)UARTCharGet(UART0_BASE);  //get char
+	UARTCharPut(UART0_BASE,uart_receive_char);             //putchar
+
+
+int32_t UARTCharGetNonBlocking(uint32_t ui32Base)  //从指定的UART端口接收1个字符（不等待） 
+
+bool UARTCharPutNonBlocking(uint32_t ui32Base, unsigned char ucData)  //发送1个字符到指定的UART端口（不等待） 
+
+
+
+六、中断设置
+一共8位只用到3位
+
+	IntPriorityGroupingSet(3);				//Set all priority to pre-emtption priority  抢占0：0位 1:1位 2:2位 3-7:3位
+	
+	IntPrioritySet(INT_UART0,3);				//Set INT_UART0 to highest priority  3:00000011
+	IntPrioritySet(FAULT_SYSTICK,0x0e0);		       //Set INT_SYSTICK to lowest priority  e0:11100000 
+
+
+
+
+
+
